@@ -2,12 +2,88 @@ from .models import TokenPair, TokenInfo, OrderInfo
 from .http_client import HttpClient
 from typing import Optional, Iterable, List
 import json
-
+import re
 
 class DexscreenerClient:
     def __init__(self) -> None:
         self._client_60rpm: HttpClient = HttpClient(60, 60, base_url="https://api.dexscreener.com")
         self._client_300rpm: HttpClient = HttpClient(300, 60, base_url="https://api.dexscreener.com/latest")
+
+    def extract_base_token(self, url: str) -> dict:
+        """
+        Извлекает chain_id и адрес из URL и возвращает информацию о базовом токене из пары.
+
+        :param url: URL в формате https://dexscreener.com/{chain_id}/{address}
+        :return: Словарь с информацией о базовом токене или ошибкой
+        :note: Поле 'fdv' представляет полную разводненную стоимость (FDV), а не текущий маркет-кэп,
+               так как API не предоставляет данных о циркулирующем предложении.
+        """
+        pattern = r"https://dexscreener\.com/(\w+)/([\w\d]+)"
+        match = re.match(pattern, url)
+        
+        if not match:
+            return {"error": "Некорректный формат URL"}
+        
+        chain_id, address = match.groups()
+        pair = self.get_token_pair(chain_id, address)
+        
+        if not pair:
+            return {"error": "Пара токенов не найдена"}
+        
+        return {
+            "type": "BaseToken",
+            "data": {
+                "address": pair.base_token.address,
+                "name": pair.base_token.name,
+                "symbol": pair.base_token.symbol,
+                "chain_id": pair.chain_id,
+                "price_usd": pair.price_usd,
+                "liquidity": pair.liquidity.model_dump() if pair.liquidity else None,
+                "volume": pair.volume.model_dump(),
+                "price_change": pair.price_change.model_dump(),
+                "pair_address": pair.pair_address,
+                "pair_created_at": pair.pair_created_at.isoformat() if pair.pair_created_at else None,
+                "fdv": pair.fdv
+            }
+        }
+
+    async def extract_base_token_async(self, url: str) -> dict:
+        """
+        Асинхронная версия `extract_base_token`.
+
+        :param url: URL в формате https://dexscreener.com/{chain_id}/{address}
+        :return: Словарь с информацией о базовом токене или ошибкой
+        :note: Поле 'fdv' представляет полную разводненную стоимость (FDV), а не текущий маркет-кэп,
+               так как API не предоставляет данных о циркулирующем предложении.
+        """
+        pattern = r"https://dexscreener\.com/(\w+)/([\w\d]+)"
+        match = re.match(pattern, url)
+        
+        if not match:
+            return {"error": "Некорректный формат URL"}
+        
+        chain_id, address = match.groups()
+        pair = await self.get_token_pair_async(chain_id, address)
+        
+        if not pair:
+            return {"error": "Пара токенов не найдена"}
+        
+        return {
+            "type": "BaseToken",
+            "data": {
+                "address": pair.base_token.address,
+                "name": pair.base_token.name,
+                "symbol": pair.base_token.symbol,
+                "chain_id": pair.chain_id,
+                "price_usd": pair.price_usd,
+                "liquidity": pair.liquidity.model_dump() if pair.liquidity else None,
+                "volume": pair.volume.model_dump(),
+                "price_change": pair.price_change.model_dump(),
+                "pair_address": pair.pair_address,
+                "pair_created_at": pair.pair_created_at.isoformat() if pair.pair_created_at else None,
+                "fdv": pair.fdv
+            }
+        }
 
     def get_latest_token_profiles(self) -> list[TokenInfo]:
         """
