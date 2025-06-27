@@ -33,6 +33,7 @@ class DexscreenerClient:
         return {
             "type": "BaseToken",
             "data": {
+                "url": pair.url,
                 "address": pair.base_token.address,
                 "name": pair.base_token.name,
                 "symbol": pair.base_token.symbol,
@@ -71,6 +72,7 @@ class DexscreenerClient:
         return {
             "type": "BaseToken",
             "data": {
+                "url": pair.url,
                 "address": pair.base_token.address,
                 "name": pair.base_token.name,
                 "symbol": pair.base_token.symbol,
